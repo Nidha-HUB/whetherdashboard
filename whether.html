@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Weather Dashboard</title>
+
+    <style>
+
+        /* Interns: Add your CSS here */
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body { font-family: Arial, sans-serif; background: #f0f2f5; }
+
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+
+        /* Add more styles... */
+        .loading {
+            text-align: center;
+            padding: 20px;
+            font-size: 18px;
+        }
+        body.dark {
+        background: #121212;
+        color: white;
+        }
+        body.dark .weather-card,
+        body.dark .favorites-section {
+        background: #1e1e1e;
+        color: white;
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+    <div class="container">
+
+        <!-- Theme Toggle -->
+
+        <div class="theme-toggle">
+
+            <button id="themeBtn">🌙 Dark</button>
+
+        </div>
+
+        
+
+        <!-- Search Section -->
+
+        <div class="search-section">
+
+            <input type="text" id="cityInput" placeholder="Enter city name..." />
+
+            <button id="searchBtn">Search Weather</button>
+
+        </div>
+
+       
+
+        <!-- Weather Display -->
+
+        <div id="weatherCard" class="weather-card" style="display: none;"></div>
+
+        
+
+        <!-- Error Message -->
+
+        <div id="errorMsg" class="error" style="display: none;"></div>
+
+
+
+        <!-- Favorites -->
+
+        <div class="favorites-section">
+
+            <h3>Favorites</h3>
+
+            <div id="favoritesList"></div>
+
+        </div>
+        <div id="loading" class="loading" style="display: none;">
+    ⏳ Loading weather...
+        </div>
+
+    </div>
+
+
+
+    <script>
+        const themeBtn = document.getElementById("themeBtn");
+
+themeBtn.addEventListener("click", function () {
+    document.body.classList.toggle("dark");
+
+    if (document.body.classList.contains("dark")) {
+        themeBtn.textContent = "☀️ Light";
+    } else {
+        themeBtn.textContent = "🌙 Dark";
+    }
+});
+
+        // REPLACE THIS with your OpenWeatherMap API key (FREE signup)
+
+        const API_KEY = 'da3c31eb7c0fa3f5604ce96996e82035';
+
+
+
+        // 1. IMPLEMENT getWeather(city) - Fetch API + async/await
+
+        
+        async function getWeather(city) {
+    const url =
+        `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${API_KEY}&units=metric`;
+
+    const response = await fetch(url);
+
+    if (!response.ok) {
+        throw new Error("City not found");
+    }
+
+    const data = await response.json();
+
+    return {
+        city: data.name,
+        temp: Math.round(data.main.temp),
+        feelsLike: Math.round(data.main.feels_like),
+        description: data.weather[0].description,
+        humidity: data.main.humidity,
+        windSpeed: data.wind.speed
+    };
+}
+
+
+            // TODO: Complete this function
+
+        
+
+
+
+        // 2. IMPLEMENT addFavorite(city)
+
+        function addFavorite(city) {
+            let favorites = JSON.parse(
+            localStorage.getItem("favorites")
+        ) || [];
+
+    if (!favorites.includes(city)) {
+        favorites.push(city);
+
+        localStorage.setItem(
+            "favorites",
+            JSON.stringify(favorites)
+        );
+    }
+
+    loadFavorites();
+}
+        function removeFavorite(city) {
+    let favorites = JSON.parse(
+        localStorage.getItem("favorites")
+    ) || [];
+
+    favorites = favorites.filter(function (item) {
+        return item !== city;
+    });
+
+    localStorage.setItem(
+        "favorites",
+        JSON.stringify(favorites)
+    );
+
+    loadFavorites();
+}
+
+
+        // 3. IMPLEMENT loadFavorites()
+
+        function loadFavorites() {
+    const favoritesList =
+        document.getElementById("favoritesList");
+
+    let favorites = JSON.parse(
+        localStorage.getItem("favorites")
+    ) || [];
+
+    favoritesList.innerHTML = "";
+
+    favorites.forEach(function (city) {
+        const div = document.createElement("div");
+
+        div.className = "favorite-item";
+
+        div.innerHTML = `
+            <span>${city}</span>
+
+            <button onclick="searchWeather('${city}')">
+                View
+            </button>
+
+            <button onclick="removeFavorite('${city}')">
+                ❌
+            </button>
+        `;
+
+        favoritesList.appendChild(div);
+    });
+}
+
+
+
+        // 4. IMPLEMENT searchWeather()
+
+        
+        async function searchWeather(city) {
+        const weatherCard = document.getElementById("weatherCard");
+        const errorMsg = document.getElementById("errorMsg");
+        const loading = document.getElementById("loading");
+
+        if (!city || city.trim() === "") {
+        errorMsg.textContent = "Please enter a city name.";
+        errorMsg.style.display = "block";
+        return;
+        }
+
+        try {
+        loading.style.display = "block";
+        errorMsg.style.display = "none";
+
+        const weather = await getWeather(city);
+
+        weatherCard.innerHTML = `
+            <h2>${weather.city}</h2>
+            <div class="temperature">${weather.temp}°C</div>
+            <p>${weather.description}</p>
+            <p>Feels like: ${weather.feelsLike}°C</p>
+            <p>Humidity: ${weather.humidity}%</p>
+            <p>Wind: ${weather.windSpeed} m/s</p>
+
+            <button onclick="addFavorite('${weather.city}')">
+                ❤️ Add to Favorites
+            </button>
+        `;
+
+        weatherCard.style.display = "block";
+
+    } catch (error) {
+        errorMsg.textContent = error.message;
+        errorMsg.style.display = "block";
+        weatherCard.style.display = "none";
+
+    } finally {
+        loading.style.display = "none";
+    }
+}
+            // TODO: Show loading, call getWeather, handle errors
+
+        
+
+
+
+        // 5. IMPLEMENT debounceSearch()
+
+        let debounceTimer;
+
+        function debounceSearch() {
+             clearTimeout(debounceTimer);
+
+            debounceTimer = setTimeout(function () {
+            const city =
+                 document.getElementById("cityInput").value.trim();
+
+            if (city) {
+               searchWeather(city);
+        }
+    }, 500);
+}
+
+
+
+        // 6. Event Listeners (wire up buttons/inputs)
+
+        document.addEventListener("DOMContentLoaded", function () {
+
+
+            loadFavorites();
+
+        const searchBtn =
+        document.getElementById("searchBtn");
+
+        const cityInput =
+        document.getElementById("cityInput");
+
+        searchBtn.addEventListener("click", function () {
+            searchWeather(cityInput.value.trim());
+    });
+
+        cityInput.addEventListener("input", debounceSearch);
+
+    });
+
+
+
+        // Export functions for button onclick (temporary)
+
+        window.searchWeather = searchWeather;
+
+        window.addFavorite = addFavorite;
+
+    </script>
+
+</body>
+
+</html>
